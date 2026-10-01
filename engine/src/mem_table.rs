@@ -1,4 +1,4 @@
-use crate::Wal;
+use crate::{Wal, constants::TOMBSTONE};
 use bytes::Bytes;
 use crossbeam_skiplist::SkipMap;
 use std::sync::Arc;
@@ -31,7 +31,8 @@ impl MemTable {
     }
 
     pub fn get(&self, k: &Bytes) -> Option<Bytes> {
-        self.get_key(k).filter(|val| val == &Bytes::new())
+        // a deleted key will store a tombstone, so we have to ignore it
+        self.get_key(k).filter(|val| val == &TOMBSTONE)
     }
 
     pub fn delete(&self, k: Bytes) {
@@ -51,6 +52,6 @@ impl MemTable {
     }
 
     fn del_key(&self, k: Bytes) {
-        self.map.insert(k, Bytes::new());
+        self.map.insert(k, TOMBSTONE);
     }
 }
