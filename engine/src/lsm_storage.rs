@@ -38,7 +38,7 @@ impl LsmStorageState {
         self.memtable.put(k, v);
     }
 
-    pub fn delete_key(&self, k: &Bytes) {
+    pub fn delete_key(&self, k: Bytes) {
         self.memtable.delete(k);
     }
 }

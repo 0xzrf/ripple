@@ -31,10 +31,10 @@ impl MemTable {
     }
 
     pub fn get(&self, k: &Bytes) -> Option<Bytes> {
-        self.get_key(k)
+        self.get_key(k).filter(|val| val == &Bytes::new())
     }
 
-    pub fn delete(&self, k: &Bytes) {
+    pub fn delete(&self, k: Bytes) {
         self.del_key(k);
     }
 
@@ -50,7 +50,7 @@ impl MemTable {
         self.map.get(k).map(|v| v.value().clone())
     }
 
-    fn del_key(&self, k: &Bytes) {
-        self.map.remove(k);
+    fn del_key(&self, k: Bytes) {
+        self.map.insert(k, Bytes::new());
     }
 }
