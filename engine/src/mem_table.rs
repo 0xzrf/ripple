@@ -7,6 +7,7 @@ pub struct MemTable {
     wal: Option<Wal>,
     map: Arc<SkipMap<Bytes, Bytes>>,
     id: usize,
+    approx_size: usize,
 }
 
 impl MemTable {
@@ -15,6 +16,7 @@ impl MemTable {
             wal: None,
             map: Arc::new(SkipMap::new()),
             id: 0,
+            approx_size: 0,
         }
     }
 
@@ -24,9 +26,13 @@ impl MemTable {
         }
     }
 
-    pub fn put(&self, k: Bytes, v: Bytes) {
+    pub fn put(&mut self, k: Bytes, v: Bytes) {
         if self.contains_key(&k) {
-            self.insert_map(k, v); // updates if the k-v pair exists
+            let byte_len = v.len() + k.len();
+            // updates if the k-v pair exists
+            self.insert_map(k, v);
+            // will add errors, so this should happen after insert
+            self.incr_approx_size(byte_len);
         }
     }
 
@@ -53,5 +59,9 @@ impl MemTable {
 
     fn del_key(&self, k: Bytes) {
         self.map.insert(k, TOMBSTONE);
+    }
+
+    fn incr_approx_size(&mut self, val: usize) {
+        self.approx_size.checked_add(val).unwrap();
     }
 }

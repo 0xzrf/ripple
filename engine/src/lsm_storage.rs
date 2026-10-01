@@ -1,5 +1,6 @@
 use crate::{MemTable, table::SSTable};
 use bytes::Bytes;
+use parking_lot::RwLock;
 use std::{collections::HashMap, sync::Arc};
 // exp: Try using smallvec in LsmStorage?
 
@@ -43,6 +44,8 @@ impl LsmStorageState {
     }
 }
 
-pub(crate) struct LsmStorageInner {}
+pub(crate) struct LsmStorageInner {
+    pub(crate) state: Arc<RwLock<Arc<LsmStorageState>>>,
+}
 
 pub(crate) struct MiniLsm {}
