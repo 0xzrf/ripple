@@ -1,4 +1,8 @@
+mod lsm_storage;
 mod mem_table;
+mod table;
 mod wal;
 
+use mem_table::MemTable;
+use table::SSTable;
 use wal::Wal;
