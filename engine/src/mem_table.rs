@@ -10,6 +10,14 @@ pub struct MemTable {
 }
 
 impl MemTable {
+    pub fn new() -> Self {
+        Self {
+            wal: None,
+            map: Arc::new(SkipMap::new()),
+            id: 0,
+        }
+    }
+
     pub fn create(&self, k: Bytes, v: Bytes) {
         if !self.contains_key(&k) {
             self.insert_map(k, v);
@@ -22,8 +30,12 @@ impl MemTable {
         }
     }
 
-    pub fn get(&self, k: Bytes) -> Option<Bytes> {
-        self.get_key(&k)
+    pub fn get(&self, k: &Bytes) -> Option<Bytes> {
+        self.get_key(k)
+    }
+
+    pub fn delete(&self, k: &Bytes) {
+        self.del_key(k);
     }
 
     fn insert_map(&self, k: Bytes, v: Bytes) {
@@ -35,6 +47,10 @@ impl MemTable {
     }
 
     fn get_key(&self, k: &Bytes) -> Option<Bytes> {
-        self.map.get(k).and_then(|val| Some(val.value().clone()))
+        self.map.get(k).map(|v| v.value().clone())
+    }
+
+    fn del_key(&self, k: &Bytes) {
+        self.map.remove(k);
     }
 }

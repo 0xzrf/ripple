@@ -3,6 +3,7 @@ mod mem_table;
 mod table;
 mod wal;
 
+pub use lsm_storage::LsmStorageState;
 use mem_table::MemTable;
 use table::SSTable;
 use wal::Wal;
