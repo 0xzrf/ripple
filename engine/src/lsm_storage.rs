@@ -4,6 +4,8 @@ use bytes::Bytes;
 use parking_lot::RwLock;
 use std::{collections::HashMap, sync::Arc};
 // EXP: Try using smallvec in LsmStorage?
+// TODO: More Memtable Formats. Implement other memtable formats, such as B-tree, vector, or adaptive radix tree (ART) memtables
+// and see it's performance later
 
 #[derive(Clone)]
 pub struct LsmStorageState {
@@ -99,7 +101,7 @@ impl LsmStorageInner {
     }
 
     fn next_sst_id(&self) -> usize {
-        0
+        unimplemented!()
     }
 
     fn path_of_wal(&self, id: usize) -> String {

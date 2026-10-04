@@ -1,4 +1,5 @@
 mod helpers;
+mod iterators;
 mod lsm_storage;
 mod mem_table;
 mod table;
