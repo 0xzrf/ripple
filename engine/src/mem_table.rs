@@ -1,4 +1,7 @@
-use crate::{Wal, constants::TOMBSTONE};
+use crate::{
+    Wal,
+    constants::{MEMTABLE_MAX_LIMIT, TOMBSTONE},
+};
 use anyhow::{Context, Result};
 use bytes::Bytes;
 use crossbeam_skiplist::SkipMap;
@@ -24,6 +27,10 @@ impl MemTable {
         }
     }
 
+    pub fn create_with_wal(id: usize, path_to_wal: String) -> Result<Self> {
+        unimplemented!()
+    }
+
     pub fn create(&self, k: Bytes, v: Bytes) {
         if !self.contains_key(&k) {
             self.insert_map(k, v);
@@ -32,8 +39,10 @@ impl MemTable {
 
     pub fn put(&self, k: Bytes, v: Bytes) {
         if self.contains_key(&k) {
+            let byte_len = k.len() + v.len();
             // updates if the k-v pair exists
             self.insert_map(k, v);
+            self.incr_approx_size(byte_len);
         }
     }
 
@@ -47,6 +56,10 @@ impl MemTable {
 
     pub fn delete(&self, k: Bytes) {
         self.del_key(k);
+    }
+
+    pub fn req_exceeds_memt_size(&self, len: usize) -> bool {
+        self.approx_size.load(Ordering::Relaxed) + len < MEMTABLE_MAX_LIMIT
     }
 
     fn insert_map(&self, k: Bytes, v: Bytes) {

@@ -5,6 +5,7 @@ use parking_lot::RwLock;
 use std::{collections::HashMap, sync::Arc};
 // EXP: Try using smallvec in LsmStorage?
 
+#[derive(Clone)]
 pub struct LsmStorageState {
     // current mutable memtable
     pub memtable: Arc<MemTable>,
@@ -36,7 +37,9 @@ pub(crate) struct LsmStorageInner {
 impl LsmStorageInner {
     pub fn init() -> Self {
         Self {
-            state: Arc::new(RwLock::new(Arc::new(LsmStorageState::create(0)))),
+            state: Arc::new(RwLock::new(Arc::new(
+                LsmStorageState::create(0),
+            ))),
         }
     }
 
@@ -48,12 +51,43 @@ impl LsmStorageInner {
         self.with_memt_read_lock(|mem_table| mem_table.create(k, v));
     }
 
-    pub fn put_key(&self, k: Bytes, v: Bytes) {
-        self.with_memt_read_lock(|memt| memt.put(k, v));
+    pub fn put_key(&self, k: Bytes, v: Bytes) -> Result<()> {
+        self.with_memt_read_lock(|memt| {
+            if memt.req_exceeds_memt_size(k.len() + v.len()) {
+                self.freeze_memtable()?; // exchanges the current mem_table with a new one
+            }
+
+            memt.put(k, v);
+            Ok(())
+        })
     }
 
     pub fn delete_key(&self, k: Bytes) {
         self.with_memt_read_lock(|memt| memt.delete(k));
+    }
+
+    fn freeze_memtable(&self) -> Result<()> {
+        let id = self.next_sst_id();
+        let memtable = Arc::new(MemTable::create_with_wal(
+            id,
+            self.path_of_wal(id),
+        )?); // <- Could take several milliseconds.
+        {
+            let mut guard = self.state.write();
+            let mut snapshot = guard.as_ref().clone();
+            let old_memtable = std::mem::replace(&mut snapshot.memtable, memtable);
+            snapshot.imm_memtables.insert(0, old_memtable);
+            *guard = Arc::new(snapshot);
+        }
+        Ok(())
+    }
+
+    fn next_sst_id(&self) -> usize {
+        0
+    }
+
+    fn path_of_wal(&self, id: usize) -> String {
+        unimplemented!()
     }
 
     #[inline]
