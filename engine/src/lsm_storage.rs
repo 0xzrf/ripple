@@ -1,8 +1,9 @@
 use crate::{MemTable, table::SSTable};
+use anyhow::Result;
 use bytes::Bytes;
 use parking_lot::RwLock;
 use std::{collections::HashMap, sync::Arc};
-// exp: Try using smallvec in LsmStorage?
+// EXP: Try using smallvec in LsmStorage?
 
 pub struct LsmStorageState {
     // current mutable memtable
@@ -17,35 +18,55 @@ pub struct LsmStorageState {
 }
 
 impl LsmStorageState {
-    pub fn create() -> Self {
+    pub fn create(id: usize) -> Self {
         Self {
-            memtable: Arc::new(MemTable::new()),
+            memtable: Arc::new(MemTable::new(id)),
             imm_memtables: vec![],
             l0_sstables: vec![],
             levels: vec![],
             sstables: HashMap::new(),
         }
     }
-
-    pub fn get_key(&self, k: &Bytes) {
-        self.memtable.get(k);
-    }
-
-    pub fn create_key(&self, k: Bytes, v: Bytes) {
-        self.memtable.create(k, v);
-    }
-
-    pub fn put_key(&self, k: Bytes, v: Bytes) {
-        self.memtable.put(k, v);
-    }
-
-    pub fn delete_key(&self, k: Bytes) {
-        self.memtable.delete(k);
-    }
 }
 
 pub(crate) struct LsmStorageInner {
     pub(crate) state: Arc<RwLock<Arc<LsmStorageState>>>,
+}
+
+impl LsmStorageInner {
+    pub fn init() -> Self {
+        Self {
+            state: Arc::new(RwLock::new(Arc::new(LsmStorageState::create(0)))),
+        }
+    }
+
+    pub fn get_key(&self, k: &Bytes) -> Result<Bytes> {
+        self.with_memt_read_lock(|mem_table| mem_table.get(k))
+    }
+
+    pub fn create_key(&self, k: Bytes, v: Bytes) {
+        unimplemented!()
+    }
+
+    pub fn put_key(&self, k: Bytes, v: Bytes) {
+        unimplemented!()
+    }
+
+    pub fn delete_key(&self, k: Bytes) {
+        unimplemented!()
+    }
+
+    #[inline]
+    fn with_memt_read_lock<T, F: Fn(Arc<MemTable>) -> T>(&self, func: F) -> T {
+        let mem_table = self.state.read().memtable.clone();
+        func(mem_table)
+    }
+
+    #[inline]
+    fn with_memt_write_lock<T, F: Fn(Arc<MemTable>) -> T>(&self, func: F) -> T {
+        let mem_table = self.state.write().memtable.clone();
+        func(mem_table)
+    }
 }
 
 pub(crate) struct MiniLsm {}

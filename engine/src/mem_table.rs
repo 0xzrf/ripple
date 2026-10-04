@@ -1,9 +1,5 @@
-use crate::{
-    Wal,
-    constants::TOMBSTONE,
-    helpers::errors::{Errs, GetErrs},
-};
-use anyhow::Result;
+use crate::{Wal, constants::TOMBSTONE};
+use anyhow::{Context, Result};
 use bytes::Bytes;
 use crossbeam_skiplist::SkipMap;
 use std::sync::Arc;
@@ -16,11 +12,11 @@ pub struct MemTable {
 }
 
 impl MemTable {
-    pub fn new() -> Self {
+    pub fn new(id: usize) -> Self {
         Self {
             wal: None,
             map: Arc::new(SkipMap::new()),
-            id: 0,
+            id,
             approx_size: 0,
         }
     }
@@ -31,26 +27,17 @@ impl MemTable {
         }
     }
 
-    pub fn put(&mut self, k: Bytes, v: Bytes) {
+    pub fn put(&self, k: Bytes, v: Bytes) {
         if self.contains_key(&k) {
-            let byte_len = v.len() + k.len();
             // updates if the k-v pair exists
             self.insert_map(k, v);
-            // will add errors, so this should happen after insert
-            self.incr_approx_size(byte_len);
         }
     }
 
-    pub fn get(&self, k: &Bytes) -> Result<Bytes, Errs> {
+    pub fn get(&self, k: &Bytes) -> Result<Bytes> {
         // a deleted key will store a tombstone, so we have to ignore it
         // TODO: Optimise this later
-        let Some(value) = self.get_key(k) else {
-            return Err(Errs::Get(GetErrs::Unavailable));
-        };
-
-        if value == TOMBSTONE {
-            return Err(Errs::Get(GetErrs::Tombstone));
-        }
+        let value = self.get_key(k).context("No key found")?;
 
         Ok(value)
     }
