@@ -1,4 +1,9 @@
-use crate::{Wal, constants::TOMBSTONE};
+use crate::{
+    Wal,
+    constants::TOMBSTONE,
+    helpers::errors::{Errs, GetErrs},
+};
+use anyhow::Result;
 use bytes::Bytes;
 use crossbeam_skiplist::SkipMap;
 use std::sync::Arc;
@@ -36,9 +41,18 @@ impl MemTable {
         }
     }
 
-    pub fn get(&self, k: &Bytes) -> Option<Bytes> {
+    pub fn get(&self, k: &Bytes) -> Result<Bytes, Errs> {
         // a deleted key will store a tombstone, so we have to ignore it
-        self.get_key(k).filter(|val| val == &TOMBSTONE)
+        // TODO: Optimise this later
+        let Some(value) = self.get_key(k) else {
+            return Err(Errs::Get(GetErrs::Unavailable));
+        };
+
+        if value == TOMBSTONE {
+            return Err(Errs::Get(GetErrs::Tombstone));
+        }
+
+        Ok(value)
     }
 
     pub fn delete(&self, k: Bytes) {

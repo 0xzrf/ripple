@@ -4,7 +4,7 @@ mod mem_table;
 mod table;
 mod wal;
 
-use helpers::{constants, macros, types};
+use helpers::{constants, errors::Errs, macros, types};
 pub use lsm_storage::LsmStorageState;
 use mem_table::MemTable;
 use table::SSTable;
