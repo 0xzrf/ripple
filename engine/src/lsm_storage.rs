@@ -1,5 +1,5 @@
 use crate::{MemTable, table::SSTable};
-use anyhow::Result;
+use anyhow::{Error, Result};
 use bytes::Bytes;
 use parking_lot::RwLock;
 use std::{collections::HashMap, sync::Arc};
@@ -44,7 +44,21 @@ impl LsmStorageInner {
     }
 
     pub fn get_key(&self, k: &Bytes) -> Result<Bytes> {
-        self.with_memt_read_lock(|mem_table| mem_table.get(k))
+        // look at the mutable mem table before searching older ones
+        // TODO: maybe increase the readability here?
+        if let Ok(result) = self.with_memt_read_lock(|mem_table| mem_table.get(k)) {
+            return Ok(result);
+        }
+
+        // check all the imm memtables, first found returns
+        for mem_table in &self.state.read().imm_memtables {
+            if let Ok(result) = mem_table.get(k) {
+                return Ok(result);
+            }
+        }
+
+        // else, we couldn't find the key
+        Err(Error::msg("Couldn't find the key"))
     }
 
     pub fn create_key(&self, k: Bytes, v: Bytes) {
