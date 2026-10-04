@@ -54,30 +54,26 @@ impl MemTable {
         Ok(value)
     }
 
-    pub fn delete(&self, k: Bytes) {
-        self.del_key(k);
-    }
-
     pub fn req_exceeds_memt_size(&self, len: usize) -> bool {
         self.approx_size.load(Ordering::Relaxed) + len < MEMTABLE_MAX_LIMIT
     }
 
+    #[inline]
     fn insert_map(&self, k: Bytes, v: Bytes) {
         self.map.insert(k, v);
     }
 
+    #[inline]
     fn contains_key(&self, k: &Bytes) -> bool {
         self.map.contains_key(k)
     }
 
+    #[inline]
     fn get_key(&self, k: &Bytes) -> Option<Bytes> {
         self.map.get(k).map(|v| v.value().clone())
     }
 
-    fn del_key(&self, k: Bytes) {
-        self.map.insert(k, TOMBSTONE);
-    }
-
+    #[inline]
     fn incr_approx_size(&self, val: usize) {
         self.approx_size.fetch_add(val, Ordering::Relaxed);
     }

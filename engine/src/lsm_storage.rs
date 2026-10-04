@@ -1,4 +1,4 @@
-use crate::{MemTable, table::SSTable};
+use crate::{MemTable, helpers::constants::TOMBSTONE, table::SSTable};
 use anyhow::{Error, Result};
 use bytes::Bytes;
 use parking_lot::RwLock;
@@ -77,7 +77,9 @@ impl LsmStorageInner {
     }
 
     pub fn delete_key(&self, k: Bytes) {
-        self.with_memt_read_lock(|memt| memt.delete(k));
+        self.with_memt_read_lock(|memt| {
+            memt.put(k, TOMBSTONE);
+        });
     }
 
     fn freeze_memtable(&self) -> Result<()> {
