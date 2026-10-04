@@ -2,13 +2,16 @@ use crate::{Wal, constants::TOMBSTONE};
 use anyhow::{Context, Result};
 use bytes::Bytes;
 use crossbeam_skiplist::SkipMap;
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 
 pub struct MemTable {
     wal: Option<Wal>,
     map: Arc<SkipMap<Bytes, Bytes>>,
     id: usize,
-    approx_size: usize,
+    approx_size: AtomicUsize,
 }
 
 impl MemTable {
@@ -17,7 +20,7 @@ impl MemTable {
             wal: None,
             map: Arc::new(SkipMap::new()),
             id,
-            approx_size: 0,
+            approx_size: AtomicUsize::new(0),
         }
     }
 
@@ -62,7 +65,7 @@ impl MemTable {
         self.map.insert(k, TOMBSTONE);
     }
 
-    fn incr_approx_size(&mut self, val: usize) {
-        self.approx_size.checked_add(val).unwrap();
+    fn incr_approx_size(&self, val: usize) {
+        self.approx_size.fetch_add(val, Ordering::Relaxed);
     }
 }

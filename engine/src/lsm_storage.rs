@@ -45,25 +45,25 @@ impl LsmStorageInner {
     }
 
     pub fn create_key(&self, k: Bytes, v: Bytes) {
-        unimplemented!()
+        self.with_memt_read_lock(|mem_table| mem_table.create(k, v));
     }
 
     pub fn put_key(&self, k: Bytes, v: Bytes) {
-        unimplemented!()
+        self.with_memt_read_lock(|memt| memt.put(k, v));
     }
 
     pub fn delete_key(&self, k: Bytes) {
-        unimplemented!()
+        self.with_memt_read_lock(|memt| memt.delete(k));
     }
 
     #[inline]
-    fn with_memt_read_lock<T, F: Fn(Arc<MemTable>) -> T>(&self, func: F) -> T {
+    fn with_memt_read_lock<T, F: FnOnce(Arc<MemTable>) -> T>(&self, func: F) -> T {
         let mem_table = self.state.read().memtable.clone();
         func(mem_table)
     }
 
     #[inline]
-    fn with_memt_write_lock<T, F: Fn(Arc<MemTable>) -> T>(&self, func: F) -> T {
+    fn with_memt_write_lock<T, F: FnMut(Arc<MemTable>) -> T>(&self, mut func: F) -> T {
         let mem_table = self.state.write().memtable.clone();
         func(mem_table)
     }
