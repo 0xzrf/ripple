@@ -1,10 +1,11 @@
-use crate::{
-    Wal,
-    constants::{MEMTABLE_MAX_LIMIT, TOMBSTONE},
-};
+use crate::iterators::StorageIterator;
+use crate::key::KeySlice;
+use crate::{Wal, constants::MEMTABLE_MAX_LIMIT};
 use anyhow::{Context, Result};
 use bytes::Bytes;
 use crossbeam_skiplist::SkipMap;
+use ouroboros::self_referencing;
+use std::ops::Bound;
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
@@ -58,6 +59,18 @@ impl MemTable {
         self.approx_size.load(Ordering::Relaxed) + len < MEMTABLE_MAX_LIMIT
     }
 
+    pub fn scan(&self, lower: Bound<Bytes>, upper: Bound<Bytes>) -> MemTableIterator {
+        let skip_map = self.map.clone();
+
+        let mut mem_t_iter = MemTableIterator::new(
+            skip_map,
+            |map| map.range((lower, upper)),
+            (Bytes::new(), Bytes::new()),
+        );
+
+        todo!()
+    }
+
     #[inline]
     fn insert_map(&self, k: Bytes, v: Bytes) {
         self.map.insert(k, v);
@@ -76,5 +89,44 @@ impl MemTable {
     #[inline]
     fn incr_approx_size(&self, val: usize) {
         self.approx_size.fetch_add(val, Ordering::Relaxed);
+    }
+}
+
+type SkipMapRangeIter<'a> =
+    crossbeam_skiplist::map::Range<'a, Bytes, (Bound<Bytes>, Bound<Bytes>), Bytes, Bytes>;
+
+#[self_referencing]
+pub struct MemTableIterator {
+    map: Arc<SkipMap<Bytes, Bytes>>,
+
+    #[borrows(map)]
+    #[not_covariant]
+    pub iter: SkipMapRangeIter<'this>,
+
+    item: (Bytes, Bytes),
+}
+
+impl MemTableIterator {}
+
+impl StorageIterator for MemTableIterator {
+    type KeyType<'a>
+        = KeySlice<'a>
+    where
+        Self: 'a;
+    fn is_valid(&self) -> bool {
+        todo!()
+    }
+
+    fn key(&self) -> Self::KeyType<'_> {
+        todo!()
+    }
+
+    fn value(&self) -> &[u8] {
+        todo!()
+    }
+
+    fn next(&mut self) -> anyhow::Result<()> {
+        self.with_mut(|items| {});
+        Ok(())
     }
 }
