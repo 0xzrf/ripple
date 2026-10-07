@@ -1,5 +1,5 @@
 use crate::iterators::StorageIterator;
-use crate::key::KeySlice;
+use crate::key::{Key, KeySlice};
 use crate::{Wal, constants::MEMTABLE_MAX_LIMIT};
 use anyhow::{Context, Result};
 use bytes::Bytes;
@@ -59,7 +59,7 @@ impl MemTable {
         self.approx_size.load(Ordering::Relaxed) + len < MEMTABLE_MAX_LIMIT
     }
 
-    pub fn scan(&self, lower: Bound<Bytes>, upper: Bound<Bytes>) -> MemTableIterator {
+    pub fn scan(&self, lower: Bound<Bytes>, upper: Bound<Bytes>) -> Result<MemTableIterator> {
         let skip_map = self.map.clone();
 
         let mut mem_t_iter = MemTableIterator::new(
@@ -68,7 +68,14 @@ impl MemTable {
             (Bytes::new(), Bytes::new()),
         );
 
-        todo!()
+        while mem_t_iter.is_valid() {
+            let key = mem_t_iter.key();
+            let value = mem_t_iter.value();
+
+            mem_t_iter.next()?;
+        }
+
+        Ok(mem_t_iter)
     }
 
     #[inline]
@@ -126,7 +133,18 @@ impl StorageIterator for MemTableIterator {
     }
 
     fn next(&mut self) -> anyhow::Result<()> {
-        self.with_mut(|items| {});
+        self.with_mut(|fields| {
+            let iter = fields.iter;
+            let item = fields.item;
+
+            if let Some(new_item) = iter.next() {
+                item.0 = new_item.key().to_owned();
+                item.1 = new_item.value().to_owned();
+            } else {
+                item.0 = Bytes::new();
+                item.1 = Bytes::new();
+            };
+        });
         Ok(())
     }
 }

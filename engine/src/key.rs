@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 pub const TS_ENABLED: bool = false;
 
-pub struct Key<T: AsRef<[u8]>>(T);
+pub struct Key<T: AsRef<[u8]>>(pub T);
 
 pub type KeySlice<'a> = Key<&'a [u8]>;
 pub type KeyVec = Key<Vec<u8>>;
