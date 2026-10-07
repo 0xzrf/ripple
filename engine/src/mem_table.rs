@@ -1,4 +1,3 @@
-use crate::helpers::constants::TOMBSTONE;
 use crate::iterators::StorageIterator;
 use crate::key::{Key, KeySlice};
 use crate::{Wal, constants::MEMTABLE_MAX_LIMIT};
@@ -60,7 +59,7 @@ impl MemTable {
         self.approx_size.load(Ordering::Relaxed) + len < MEMTABLE_MAX_LIMIT
     }
 
-    pub fn scan(&self, lower: Bound<Bytes>, upper: Bound<Bytes>) -> Result<MemTableIterator> {
+    pub fn scan(&self, lower: Bound<Bytes>, upper: Bound<Bytes>) -> MemTableIterator {
         let skip_map = self.map.clone();
 
         let mut mem_t_iter = MemTableIterator::new(
@@ -69,14 +68,9 @@ impl MemTable {
             (Bytes::new(), Bytes::new()),
         );
 
-        while mem_t_iter.is_valid() {
-            let key = mem_t_iter.key();
-            let value = mem_t_iter.value();
+        mem_t_iter.next().unwrap();
 
-            mem_t_iter.next()?;
-        }
-
-        Ok(mem_t_iter)
+        mem_t_iter
     }
 
     #[inline]
@@ -122,7 +116,7 @@ impl StorageIterator for MemTableIterator {
     where
         Self: 'a;
     fn is_valid(&self) -> bool {
-        self.with_item(|item| item.0 == TOMBSTONE)
+        self.with_item(|item| item.0 != Bytes::new())
     }
 
     fn key(&self) -> Self::KeyType<'_> {
