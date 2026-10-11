@@ -42,7 +42,16 @@ pub struct MergeIterator<I: StorageIterator> {
 
 impl<I: StorageIterator> MergeIterator<I> {
     pub fn create(iters: Vec<Box<I>>) -> Self {
-        unimplemented!()
+        Self {
+            iters: BinaryHeap::from(
+                iters
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, iter)| HeapWrapper(i, iter))
+                    .collect::<Vec<HeapWrapper<I>>>(),
+            ),
+            current: None,
+        }
     }
 }
 
@@ -67,4 +76,3 @@ impl<I: 'static + for<'a> StorageIterator<KeyType<'a> = KeySlice<'a>>> StorageIt
         unimplemented!()
     }
 }
-
