@@ -61,15 +61,25 @@ impl<I: 'static + for<'a> StorageIterator<KeyType<'a> = KeySlice<'a>>> StorageIt
     type KeyType<'a> = KeySlice<'a>;
 
     fn key(&self) -> KeySlice<'_> {
-        unimplemented!()
+        if let Some(current) = &self.current {
+            current.1.key()
+        } else {
+            // TODO: We can make this error better
+            panic!();
+        }
     }
 
     fn value(&self) -> &[u8] {
-        unimplemented!()
+        if let Some(current) = &self.current {
+            current.1.value()
+        } else {
+            // TODO: We can make this error better
+            panic!();
+        }
     }
 
     fn is_valid(&self) -> bool {
-        unimplemented!()
+        self.current.is_some()
     }
 
     fn next(&mut self) -> Result<()> {
