@@ -1,11 +1,12 @@
 use std::cmp;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, binary_heap::PeekMut};
 
-use anyhow::Result;
+use anyhow::{Error, Result};
 
-use crate::key::KeySlice;
+use crate::key::{Key, KeySlice};
 
 use crate::StorageIterator;
+use crate::check_result;
 
 struct HeapWrapper<I: StorageIterator>(pub usize, pub Box<I>);
 
@@ -42,16 +43,17 @@ pub struct MergeIterator<I: StorageIterator> {
 
 impl<I: StorageIterator> MergeIterator<I> {
     pub fn create(iters: Vec<Box<I>>) -> Self {
-        Self {
-            iters: BinaryHeap::from(
-                iters
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, iter)| HeapWrapper(i, iter))
-                    .collect::<Vec<HeapWrapper<I>>>(),
-            ),
-            current: None,
-        }
+        let mut iters = BinaryHeap::from(
+            iters
+                .into_iter()
+                .enumerate()
+                .map(|(i, iter)| HeapWrapper(i, iter))
+                .collect::<Vec<HeapWrapper<I>>>(),
+        );
+
+        let current = iters.pop();
+
+        Self { current, iters }
     }
 }
 
@@ -83,6 +85,39 @@ impl<I: 'static + for<'a> StorageIterator<KeyType<'a> = KeySlice<'a>>> StorageIt
     }
 
     fn next(&mut self) -> Result<()> {
-        unimplemented!()
+        let current = self.current.as_mut().unwrap();
+
+        while let Some(mut iter) = self.iters.peek_mut() {
+            if iter.1.key() == current.1.key() {
+                if let e @ Err(_) = iter.1.next() {
+                    PeekMut::pop(iter);
+                    return e;
+                }
+
+                if !iter.1.is_valid() {
+                    PeekMut::pop(iter);
+                }
+            } else {
+                break;
+            }
+        }
+
+        current.1.next()?;
+
+        if !current.1.is_valid() {
+            if let Some(iter) = self.iters.pop() {
+                *current = iter;
+            }
+
+            return Ok(());
+        }
+
+        if let Some(mut inner_iter) = self.iters.peek_mut()
+            && *current < *inner_iter
+        {
+            std::mem::swap(&mut *inner_iter, current);
+        }
+
+        Ok(())
     }
 }
