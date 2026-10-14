@@ -48,11 +48,7 @@ impl MemTable {
     }
 
     pub fn get(&self, k: &Bytes) -> Result<Bytes> {
-        // a deleted key will store a tombstone, so we have to ignore it
-        // TODO: Optimise this later
-        let value = self.get_key(k).context("No key found")?;
-
-        Ok(value)
+        self.get_key(k).context("No key found")
     }
 
     pub fn req_exceeds_memt_size(&self, len: usize) -> bool {
@@ -133,10 +129,7 @@ impl StorageIterator for MemTableIterator {
             let item = fields.item;
 
             if let Some(new_item) = iter.next() {
-                *item = (
-                    new_item.key().clone(),
-                    new_item.value().clone(),
-                );
+                *item = (new_item.key().clone(), new_item.value().clone());
             } else {
                 *item = (Bytes::new(), Bytes::new());
             };
